@@ -882,12 +882,13 @@ ul{list-style:none;}
   pointer-events:none;
 }
 .now-sheet.open .now-sheet-blur{opacity:var(--blur-op,.34);}
-/* 主色氛围层 */
+/* 主色氛围层 —— 深浅两套渐变（由 JS 按主题注入不同的 --c1/--c2/--c3） */
 .now-sheet-tint{
   position:absolute;inset:0;z-index:2;
   background:
-    radial-gradient(125% 78% at 50% 0%, var(--c1,rgba(255,108,61,.22)), transparent 62%),
-    radial-gradient(95% 62% at 82% 96%, var(--c2,rgba(0,122,255,.12)), transparent 60%);
+    radial-gradient(130% 85% at 30% 8%,  var(--c1,rgba(255,108,61,.22)), transparent 58%),
+    radial-gradient(110% 75% at 78% 45%, var(--c2,rgba(0,122,255,.12)), transparent 55%),
+    radial-gradient(120% 70% at 12% 92%, var(--c3,rgba(120,80,255,.10)), transparent 58%);
   opacity:0;transition:opacity var(--d-emph) var(--ease);
   pointer-events:none;
 }
@@ -917,24 +918,25 @@ ul{list-style:none;}
   .now-main{
     flex-direction:row;align-items:stretch;gap:var(--s6);
     flex:1;min-height:0;
+    /* 给底部通栏播放条让出空间 */
+    padding-bottom:64px;
   }
-  /* 左：封面大区 —— 占左侧 3/4，封面在该区内居中且占 75%
-     封面尺寸同时受宽度与列高约束，绝不溢出压到顶栏 */
-  .now-art-col{
-    flex:2;min-width:0;min-height:0;height:100%;
+  /* 左：封面区 —— 屏幕左半（50% 宽），封面占该半屏的 75% */
+  .now-sheet-inner .now-art-col{
+    flex:none;width:50%;min-width:0;min-height:0;height:100%;
     display:flex;align-items:center;justify-content:center;
     overflow:hidden;padding:var(--s2) 0;
   }
-  /* 封面尺寸由 JS 计算：min(列宽×75%, 列高)，保证 1:1 且不溢出 */
+  /* 封面尺寸由 JS 计算：左半屏宽 × 75%，且不超过可用高度 */
   .now-art-col .now-art{
     width:auto;height:auto;max-width:none;max-height:none;
     margin:0;align-self:center;
   }
-  /* 右：详情 —— 垂直居中，与封面同一条中轴线 */
+  /* 右：详情 —— 右半屏，垂直居中 */
   .now-sheet-inner .now-info{
     flex:1;min-width:0;max-width:none;height:100%;
     display:flex;flex-direction:column;justify-content:center;
-    padding-left:var(--s4);
+    padding-left:var(--s5);
   }
   .now-meta{text-align:left;margin-bottom:var(--s5);}
   .now-title{font-size:22px;line-height:1.4;}
@@ -944,13 +946,16 @@ ul{list-style:none;}
   /* 下：控制栏在左、简介在右，横跨整宽
      注意：基础样式 .now-foot{display:block} 在 media query 之后声明，
      这里用更高特异性覆盖 */
-  .now-sheet-inner .now-foot{
+  /* 底部播放条 —— 通栏固定在页面最底部 */
+  .now-foot{
+    position:absolute;left:0;right:0;bottom:0;z-index:5;
     display:flex;align-items:center;gap:var(--s6);
-    margin-top:var(--s3);padding-top:var(--s3);
+    margin:0;padding:var(--s3) var(--s7);
     border-top:.5px solid var(--sep);
-    flex:none;
+    background:var(--mat-thin);
+    backdrop-filter:var(--glass-blur-strong);-webkit-backdrop-filter:var(--glass-blur-strong);
   }
-  .now-sheet-inner .now-bottom{
+  .now-bottom{
     flex:none;width:auto;margin:0;padding:0;border-top:none;
     justify-content:flex-start;align-items:center;gap:var(--s2);
   }
@@ -958,7 +963,7 @@ ul{list-style:none;}
     flex-direction:row;align-items:center;gap:6px;
     padding:7px 12px;white-space:nowrap;
   }
-  .now-sheet-inner .now-desc{
+  .now-desc{
     flex:1;min-width:0;margin:0;padding:0 0 0 var(--s4);
     border-top:none;max-height:56px;overflow-y:auto;
     font-size:var(--t-cap);line-height:1.7;
@@ -971,6 +976,7 @@ ul{list-style:none;}
   margin-bottom:var(--s4);
 }
 .now-top-title{font-size:var(--t-cap);font-weight:700;color:var(--label-2);letter-spacing:.04em;}
+.now-top-right{display:flex;align-items:center;gap:var(--s1);}
 /* 大封面 */
 .now-art-col{display:block;width:100%;}
 .now-art{
@@ -1015,6 +1021,23 @@ ul{list-style:none;}
   transition:background var(--d-micro) linear;
 }
 .now-wave i.played{background:var(--brand);}
+/* 长按拖拽态：波形放大高亮 */
+.now-wave.dragging{height:82px;}
+.now-wave.dragging i{transition:background .08s linear;}
+.now-wave.dragging i.played{background:var(--brand);}
+/* 拖拽定位气泡 */
+.wave-bubble{
+  position:absolute;z-index:8;display:none;
+  transform:translateX(-50%);
+  background:var(--mat-thick);
+  backdrop-filter:var(--glass-blur-strong);-webkit-backdrop-filter:var(--glass-blur-strong);
+  border:.5px solid var(--glass-border);
+  box-shadow:var(--sh-modal);
+  padding:3px 9px;border-radius:9999px;
+  font-size:var(--t-micro);font-weight:700;color:var(--label);
+  font-variant-numeric:tabular-nums;
+  pointer-events:none;
+}
 /* 时间 */
 .now-times{display:flex;justify-content:space-between;font-size:var(--t-micro);color:var(--label-2);font-variant-numeric:tabular-nums;margin-bottom:var(--s4);}
 /* 控制行 */
@@ -1410,9 +1433,14 @@ ul{list-style:none;}
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.2 8 10.6l4.5-4.4"/></svg>
       </button>
       <span class="now-top-title">正在播放</span>
+      <div class="now-top-right">
+      <button class="tbtn" id="btnNowTheme" title="切换浅色/深色外观" aria-label="切换浅色或深色外观">
+        <svg id="nowThemeIcon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3.4"/><path d="M8 1.4v1.6M8 13v1.6M14.6 8H13M3 8H1.4M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1M12.7 12.7l-1.1-1.1M4.4 4.4 3.3 3.3"/></svg>
+      </button>
       <button class="tbtn" id="btnNowList" title="播放列表" aria-label="播放列表">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5.5 4h8M5.5 8h8M5.5 12h8"/><circle cx="2.6" cy="4" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="12" r=".9" fill="currentColor" stroke="none"/></svg>
       </button>
+      </div>
     </div>
 
     <div class="now-main">
@@ -1450,7 +1478,10 @@ ul{list-style:none;}
       </div>
     </div>
 
-    <div class="now-foot">
+  </div>
+
+  <!-- 底部播放条：通栏固定 -->
+  <div class="now-foot">
     <div class="now-bottom">
       <button id="btnNowInfo">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.2v3.6M8 5.2v.1"/></svg>
@@ -1467,7 +1498,6 @@ ul{list-style:none;}
     </div>
 
     <div class="now-desc" id="nowDesc"></div>
-    </div>
   </div>
 </div>
 
@@ -3116,6 +3146,13 @@ function nowKeyHandler(e) {
 
 /* ---------- 播放详情页事件绑定 ---------- */
 $('#btnNowClose').addEventListener('click', () => nowSheet.hide());
+
+/* 右上角：浅色 / 深色外观切换（两态直接互切） */
+$('#btnNowTheme').addEventListener('click', () => {
+  const cur = theme.current();
+  theme.set(cur === 'dark' ? 'light' : 'dark');
+  toast(cur === 'dark' ? '已切换到浅色外观' : '已切换到深色外观');
+});
 $('#btnNowPlay').addEventListener('click', () => togglePlay());
 $('#btnNowBack').addEventListener('click', () => seek(-15));
 $('#btnNowFwd').addEventListener('click', () => seek(30));
@@ -3148,23 +3185,137 @@ $('#nowSheetPodcast').addEventListener('click', e => {
 });
 $('#nowFavIcon') && null;
 
-/* 波形点击定位 */
+/* 波形进度条 —— 支持长按拖拽精确定位
+   交互：
+     · 轻触/点击  → 立即跳转到该位置
+     · 长按(320ms) → 进入拖拽态，波形放大、显示定位气泡，
+                     手指移动实时跟随，松手落位
+   说明：长按期间会临时挂起播放位置的自动跟随，避免与拖拽冲突。 */
 (function bindWave() {
   const wave = $('#nowWave');
   if (!wave) return;
-  const seekByEvent = e => {
-    if (!state.cur) return;
-    const d = findPodcast(state.cur.pid); if (!d) return;
-    const e2 = d.eps[state.cur.i]; if (!e2) return;
-    const total = epSec(d, e2);
+
+  const HOLD_MS = 320;
+  const DRAG_THRESHOLD = 6;      // 超过该像素位移即进入拖拽
+  let holding = false;           // 已按下
+  let dragging = false;          // 进入长按拖拽态
+  let holdTimer = null;
+  let startX = 0, startY = 0;
+  let resumeAt = null;           // 拖拽前的播放位置（用于恢复）
+  let wasPlaying = false;
+
+  const ratioAt = clientX => {
     const r = wave.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left;
-    const ratio = Math.max(0, Math.min(1, x / r.width));
+    return Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+  };
+
+  const totalOf = () => {
+    if (!state.cur) return 0;
+    const d = findPodcast(state.cur.pid); if (!d) return 0;
+    const ep = d.eps[state.cur.i]; if (!ep) return 0;
+    return epSec(d, ep);
+  };
+
+  const applyRatio = ratio => {
+    const total = totalOf();
+    if (!total) return;
     seekTo(ratio * total);
     nowSheet.updateProgress();
   };
-  wave.addEventListener('mousedown', seekByEvent);
-  wave.addEventListener('touchstart', seekByEvent, { passive: true });
+
+  const showBubble = ratio => {
+    let b = $('#waveBubble');
+    if (!b) {
+      b = document.createElement('div');
+      b.id = 'waveBubble';
+      b.className = 'wave-bubble';
+      document.getElementById('nowSheet').appendChild(b);
+    }
+    const r = wave.getBoundingClientRect();
+    const sr = document.getElementById('nowSheet').getBoundingClientRect();
+    b.textContent = fmtTime(ratio * totalOf());
+    b.style.display = 'block';
+    b.style.left = (r.left - sr.left + ratio * r.width) + 'px';
+    b.style.top = (r.top - sr.top - 30) + 'px';
+  };
+  const hideBubble = () => { const b = $('#waveBubble'); if (b) b.style.display = 'none'; };
+
+  const enterDrag = () => {
+    dragging = true;
+    wave.classList.add('dragging');
+    // 长按期间暂停自动跟随（保持当前进度不跳）
+    resumeAt = state.pos;
+    wasPlaying = state.playing;
+    if (audio) audio.pause();
+  };
+
+  const endDrag = () => {
+    if (!dragging) return;
+    dragging = false;
+    wave.classList.remove('dragging');
+    hideBubble();
+    // 落位后恢复播放
+    if (wasPlaying && audio) {
+      const p = audio.play();
+      if (p && p.catch) p.catch(()=>{});
+    }
+    state.playing = wasPlaying;
+    renderPlayer(); renderPanel();
+  };
+
+  const onDown = e => {
+    if (!state.cur) return;
+    holding = true; dragging = false;
+    const pt = (e.touches && e.touches[0]) ? e.touches[0]
+              : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : e;
+    startX = pt.clientX; startY = pt.clientY;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      if (holding) enterDrag();
+    }, HOLD_MS);
+  };
+
+  const onMove = e => {
+    if (!holding) return;
+    const pt = (e.touches && e.touches[0]) ? e.touches[0]
+              : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : e;
+    const dx = pt.clientX - startX, dy = pt.clientY - startY;
+    if (!dragging) {
+      // 位移超过阈值且偏水平 → 立即进入拖拽（不等长按）
+      if (Math.abs(dx) > DRAG_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+        clearTimeout(holdTimer);
+        enterDrag();
+      } else return;
+    }
+    e.preventDefault();
+    const ratio = ratioAt(pt.clientX);
+    applyRatio(ratio);
+    showBubble(ratio);
+  };
+
+  const onUp = e => {
+    if (!holding) return;
+    const pt = (e.touches && e.touches[0]) ? e.touches[0]
+              : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : e;
+    clearTimeout(holdTimer);
+    if (dragging) {
+      endDrag();
+    } else {
+      // 轻触 —— 立即定位
+      const ratio = ratioAt(pt.clientX);
+      applyRatio(ratio);
+      showBubble(ratio);
+      setTimeout(hideBubble, 700);
+    }
+    holding = false;
+  };
+
+  wave.addEventListener('pointerdown', onDown);
+  wave.addEventListener('touchstart', onDown, { passive: true });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
   wave.addEventListener('keydown', e => {
     if (e.key === 'ArrowRight') { e.preventDefault(); seek(15); }
     if (e.key === 'ArrowLeft') { e.preventDefault(); seek(-15); }
@@ -3292,21 +3443,44 @@ async function applyCoverTheme(pid, coverUrl) {
   }
 
   if (!col) {
-    sheet.style.setProperty('--c1', isDark ? 'rgba(255,108,61,.20)' : 'rgba(255,108,61,.16)');
-    sheet.style.setProperty('--c2', isDark ? 'rgba(0,122,255,.14)' : 'rgba(0,122,255,.10)');
-    sheet.style.setProperty('--blur-op', isDark ? '0.40' : '0.28');
+    // 回退品牌橙（同样分深浅两套）
+    if (isDark) {
+      sheet.style.setProperty('--c1', 'hsla(18, 82%, 52%, .34)');
+      sheet.style.setProperty('--c2', 'hsla(350, 68%, 48%, .22)');
+      sheet.style.setProperty('--c3', 'hsla(260, 60%, 50%, .16)');
+      sheet.style.setProperty('--blur-op', '0.46');
+    } else {
+      sheet.style.setProperty('--c1', 'hsla(18, 88%, 68%, .26)');
+      sheet.style.setProperty('--c2', 'hsla(350, 72%, 66%, .16)');
+      sheet.style.setProperty('--c3', 'hsla(260, 62%, 70%, .12)');
+      sheet.style.setProperty('--blur-op', '0.32');
+    }
     return;
   }
 
-  // 主色 -> 氛围渐变
-  // 浅色模式压低饱和与不透明度，深色模式更浓郁，保证正文可读
+  // 主色 -> 三段氛围渐变
+  // 深色：饱和度与不透明度更高，色相更亮（深底上更透亮）
+  // 浅色：饱和度与不透明度降低，色相更浅更柔（白底上不刺眼）
   const hue = col.h;
-  const sat = Math.max(22, Math.min(80, col.s * 100));
-  const alpha1 = isDark ? 0.30 : 0.20;
-  const alpha2 = isDark ? 0.18 : 0.12;
-  sheet.style.setProperty('--c1', 'hsla(' + hue.toFixed(0) + ', ' + sat.toFixed(0) + '%, ' + (isDark ? 44 : 60) + '%, ' + alpha1 + ')');
-  sheet.style.setProperty('--c2', 'hsla(' + ((hue + 45) % 360).toFixed(0) + ', ' + (sat * 0.8).toFixed(0) + '%, ' + (isDark ? 38 : 56) + '%, ' + alpha2 + ')');
-  sheet.style.setProperty('--blur-op', isDark ? '0.44' : '0.30');
+  const h2 = (hue + 42) % 360;
+  const h3 = (hue + 300) % 360;      // 互补偏冷
+  const sat = Math.max(24, Math.min(88, col.s * 100));
+  const set = (name, h, s, l, a) => sheet.style.setProperty(name,
+    'hsla(' + h.toFixed(0) + ', ' + s.toFixed(0) + '%, ' + l.toFixed(0) + '%, ' + a + ')');
+
+  if (isDark) {
+    set('--c1', hue, Math.min(92, sat * 1.1), 46, 0.34);
+    set('--c2', h2, sat * 0.9, 40, 0.22);
+    set('--c3', h3, sat * 0.85, 44, 0.17);
+    sheet.style.setProperty('--blur-op', '0.46');
+    sheet.style.setProperty('--tint-op', '1');
+  } else {
+    set('--c1', hue, Math.min(86, sat * 0.95), 66, 0.24);
+    set('--c2', h2, sat * 0.78, 62, 0.15);
+    set('--c3', h3, sat * 0.72, 66, 0.11);
+    sheet.style.setProperty('--blur-op', '0.30');
+    sheet.style.setProperty('--tint-op', '1');
+  }
 }
 
 
@@ -3319,7 +3493,8 @@ function fitNowArt() {
   if (!isWide) { art.style.width = ''; art.style.height = ''; return; }
   const cw = col.clientWidth, ch = col.clientHeight;
   if (!cw || !ch) return;
-  const size = Math.max(120, Math.min(cw * 0.92, ch));
+  // 左半屏的 75%，同时不超过可用高度（保证 1:1 且不溢出）
+  const size = Math.max(120, Math.min(cw * 0.75, ch));
   art.style.width = size + 'px';
   art.style.height = size + 'px';
 }
@@ -3377,9 +3552,16 @@ const ICON_MOON = '<path d="M13.4 9.6A5.6 5.6 0 1 1 6.4 2.6a4.6 4.6 0 0 0 7 7z"/
 const ICON_AUTO = '<circle cx="8" cy="8" r="6"/><path d="M8 2v12" /><path d="M8 2a6 6 0 0 1 0 12" fill="currentColor" stroke="none"/>';
 
 function updateThemeIcon() {
+  const cur = theme.current();
+  // 播放页右上角的两态按钮
+  const nic = $('#nowThemeIcon');
+  if (nic) {
+    nic.innerHTML = cur === 'dark' ? ICON_SUN : ICON_MOON;
+    $('#btnNowTheme').title = (cur === 'dark' ? '切换到浅色外观' : '切换到深色外观');
+  }
+  // 底部播放条的三态按钮
   const ic = $('#themeIcon');
   if (!ic) return;
-  const cur = theme.current();
   if (theme.mode === 'auto') {
     ic.innerHTML = ICON_AUTO;
     ic.style.opacity = '.65';
