@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>小宇宙 for Mac — 播客，为大屏而生</title>
+<title>小宇宙 Web 版 — 播客，跨端同听</title>
 <style>
 /* ============================================================
-   小宇宙 for Mac — 设计令牌
+   小宇宙 Web 版 — 设计令牌
    源自 apple-design 技能（Apple HIG）+ Liquid Glass 材质规范
    ============================================================ */
 :root{
@@ -178,6 +178,8 @@ html[data-theme="light"]{
 
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;}
+/* 抽屉面板停在视口外时不应撑宽文档（移动端横向溢出） */
+html{overflow-x:hidden;}
 body{
   font-family:var(--apple-font);
   font-size:var(--t-body);
@@ -425,12 +427,19 @@ ul{list-style:none;}
   letter-spacing:-.02em;
 }
 /* 封面懒加载：占位层在图片加载完成后隐藏 */
+/* 封面图层：图片在上（z-index 1），占位字在下（z-index 0） */
 .card-cover-inner,.rank-cover-wrap{position:absolute;inset:0;}
-.card-cover-inner .cover-ph,.rank-cover-wrap .cover-ph{position:absolute;inset:0;}
+.card-cover-inner .cover-ph,.rank-cover-wrap .cover-ph{
+  position:absolute;inset:0;z-index:0;
+  opacity:0;transition:opacity var(--d-fast) var(--ease);
+}
 .card-cover-inner img,.rank-cover-wrap img{position:absolute;inset:0;z-index:1;}
-.card-cover-inner img:not([src]),.card-cover-inner img[src=""],
-.rank-cover-wrap img:not([src]),.rank-cover-wrap img[src=""]{display:none;}
 .card-cover-inner img[src=""],.rank-cover-wrap img[src=""]{opacity:0;}
+.card-cover-inner:has(img[src=""]) .cover-ph,
+.rank-cover-wrap:has(img[src=""]) .cover-ph{opacity:1;}
+/* 图片加载失败 —— 隐藏图片、显示首字占位 */
+.card-cover-inner.img-failed img,.rank-cover-wrap.img-failed img{opacity:0;}
+.card-cover-inner.img-failed .cover-ph,.rank-cover-wrap.img-failed .cover-ph{opacity:1;}
 .rank-cover-wrap{width:44px;height:44px;border-radius:8px;overflow:hidden;flex:none;background:var(--fill);box-shadow:var(--sh-sub);}
 .rank-ph{font-size:17px;}
 .card-play{
@@ -816,6 +825,7 @@ ul{list-style:none;}
 .queue-panel{
   position:absolute;top:56px;right:0;bottom:0;z-index:9;
   width:340px;max-width:86vw;
+  visibility:hidden;
   display:flex;flex-direction:column;
   background:var(--mat-thick);
   backdrop-filter:var(--glass-blur-strong);-webkit-backdrop-filter:var(--glass-blur-strong);
@@ -825,7 +835,9 @@ ul{list-style:none;}
   transition:transform var(--d-emph) var(--spring);
   pointer-events:none;
 }
-.now-sheet.queue-open .queue-panel{transform:translateX(0);pointer-events:auto;}
+.now-sheet.queue-open .queue-panel{
+  transform:translateX(0);pointer-events:auto;visibility:visible;
+}
 .queue-panel-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:var(--s3) var(--s4);border-bottom:.5px solid var(--sep);
@@ -1303,7 +1315,7 @@ ul{list-style:none;}
   <!-- 标题栏 -->
   <div id="titlebar">
     <div class="traffic"><i></i><i></i><i></i></div>
-    <div class="tb-title" id="tbTitle">小宇宙 for Mac</div>
+    <div class="tb-title" id="tbTitle">小宇宙 Web 版</div>
     <div style="display:flex;align-items:center;gap:var(--s3);">
       <label class="search">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="7" cy="7" r="4.6"/><path d="M10.5 10.5 14 14"/></svg>
@@ -1606,7 +1618,7 @@ ul{list-style:none;}
 <script id="data" type="application/json">__DATA__</script>
 <script>
 /* ============================================================
-   小宇宙 for Mac — 应用逻辑
+   小宇宙 Web 版 — 应用逻辑
    ============================================================ */
 const DATA = JSON.parse(document.getElementById('data').textContent);
 const byId = Object.fromEntries(DATA.map(d => [d.id, d]));
@@ -2316,7 +2328,7 @@ function cardHTML(d) {
   return '<div class="card" data-pid="' + d.id + '">' +
     '<div class="card-cover">' +
       '<div class="card-cover-inner" data-pid="' + d.id + '" title="双击播放">' +
-      '<img src="' + escAttr(cov) + '" alt="' + esc(d.name) + '封面" loading="lazy" data-pid-c="' + d.id + '" onerror="this.style.display=\'none\'">' +
+      '<img src="' + escAttr(cov) + '" alt="' + esc(d.name) + '封面" loading="lazy" data-pid-c="' + d.id + '" onerror="this.style.display=\'none\';this.parentElement.classList.add(\'img-failed\')">' +
       '<div class="cover-ph">' + esc((d.name||'?').slice(0,1)) + '</div>' +
       '</div>' +
       '<button class="card-play" data-play="' + d.id + '" aria-label="播放 ' + esc(d.name) + ' 最新单集">' + ICON.play + '</button>' +
@@ -3874,7 +3886,7 @@ updateHistoryBadge();
     if (live.status === 'ok') toast('已同步 ' + live.syncedCount + ' 档节目的最新数据');
   });
 })();
-$('#tbTitle').textContent = '小宇宙 for Mac';
+$('#tbTitle').textContent = '小宇宙 Web 版';
 </script>
 </body>
 </html>
