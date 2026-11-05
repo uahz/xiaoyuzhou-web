@@ -4,6 +4,19 @@
 
 > 单文件、零构建、零依赖。双击 `index.html` 即可运行。
 
+## 桌面版
+
+除网页版外，仓库内还包含 **Electron 桌面版**（`desktop/`），可打包为 **Windows `.exe`** 与 **macOS `.dmg`**：
+
+```bash
+cd desktop
+npm install
+npm run build:win      # Windows
+npm run build:mac      # macOS（需在 macOS 上执行）
+```
+
+桌面版的关键优势是**主进程直连小宇宙官方接口**，不受浏览器 CORS 限制，因此支持**手机号 + 短信验证码真实登录**。详见 [`desktop/README.md`](desktop/README.md)。
+
 ## 跨端可用
 
 同一份代码，在所有主流设备上都能用：
@@ -94,6 +107,10 @@ python3 build.py
 **封面主色预置 + 运行时兜底**。托管域名的 CORS 是回显具体 Origin 而非 `*`，本地开发时 canvas 会被污染 —— 因此主色在构建时离线算好写入数据，运行时 canvas 取色仅作兜底。
 
 **布局尺寸由 JS 计算**。需要严格 1:1 正方形且不溢出父容器时，CSS 无法同时用「父宽百分比」和「父高」约束一个元素并保持 `aspect-ratio`（`max-height` 会把正方形压扁），故用 JS 写入像素宽高。
+
+## 桌面版构建校验
+
+`desktop/check.py` 在打包前自动检查：脚本语法（node --check）、script 标签配对、JSON 块可解析、顶层重复声明、关键 DOM id 齐全。
 
 ## 致谢
 
