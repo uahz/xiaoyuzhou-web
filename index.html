@@ -1099,8 +1099,81 @@ ul{list-style:none;}
   font-size:var(--t-cap);font-weight:700;color:var(--label);
   background:var(--fill-3);
   transition:background var(--d-micro) var(--ease);
+  position:relative;
 }
 .now-speed:hover{background:var(--fill-2);}
+.now-speed.open{background:var(--brand);color:#fff;}
+
+/* ---------- 倍速条（点击倍速按钮弹出，可拖拽选倍速） ---------- */
+.speed-panel{
+  position:absolute;z-index:20;
+  width:236px;padding:var(--s3) var(--s4) var(--s3);
+  border-radius:14px;
+  background:var(--mat-thick);
+  backdrop-filter:var(--glass-blur-strong);-webkit-backdrop-filter:var(--glass-blur-strong);
+  border:.5px solid var(--glass-border);
+  box-shadow:var(--sh-modal);
+  opacity:0;pointer-events:none;
+  transform:translateY(6px) scale(.97);
+  transition:opacity var(--d-fast) var(--ease),transform var(--d-fast) var(--spring);
+}
+.speed-panel.open{opacity:1;pointer-events:auto;transform:translateY(0) scale(1);}
+.speed-panel-head{
+  display:flex;align-items:baseline;justify-content:space-between;
+  margin-bottom:10px;
+}
+.speed-panel-title{font-size:var(--t-micro);font-weight:700;color:var(--label-2);letter-spacing:.03em;}
+.speed-panel-val{
+  font-size:15px;font-weight:800;color:var(--brand);
+  font-variant-numeric:tabular-nums;
+}
+/* 滑轨 */
+.speed-track{
+  position:relative;height:22px;cursor:pointer;
+  display:flex;align-items:center;
+  touch-action:none;
+}
+.speed-rail{
+  position:absolute;left:0;right:0;height:4px;border-radius:2px;
+  background:var(--fill-2);
+}
+.speed-fill{
+  position:absolute;left:0;height:4px;border-radius:2px;
+  background:var(--brand);
+}
+.speed-thumb{
+  position:absolute;width:15px;height:15px;border-radius:50%;
+  background:var(--brand);
+  box-shadow:0 2px 6px rgba(0,0,0,.28);
+  transform:translateX(-50%);
+  transition:transform var(--d-micro) var(--spring);
+}
+.speed-track:hover .speed-thumb,.speed-track.dragging .speed-thumb{transform:translateX(-50%) scale(1.25);}
+/* 刻度 */
+.speed-ticks{
+  position:relative;height:16px;margin-top:2px;
+}
+.speed-tick{
+  position:absolute;top:0;transform:translateX(-50%);
+  font-size:10px;color:var(--label-3);cursor:pointer;
+  padding:2px 3px;border-radius:4px;
+  transition:color var(--d-micro) var(--ease);
+  white-space:nowrap;
+}
+.speed-tick:hover{color:var(--label);}
+.speed-tick.on{color:var(--brand);font-weight:700;}
+.speed-presets{
+  display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;
+}
+.speed-preset{
+  flex:1;min-width:0;
+  height:24px;border-radius:7px;
+  font-size:11px;font-weight:700;color:var(--label-2);
+  background:var(--fill-3);
+  transition:background var(--d-micro) var(--ease),color var(--d-micro) var(--ease);
+}
+.speed-preset:hover{background:var(--fill-2);color:var(--label);}
+.speed-preset.on{background:var(--brand);color:#fff;}
 /* 底部操作 */
 .now-foot{display:block;}
 .now-bottom{display:flex;align-items:center;justify-content:space-around;gap:var(--s3);padding-top:var(--s3);border-top:.5px solid var(--sep);}
@@ -1502,7 +1575,7 @@ ul{list-style:none;}
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.6 4.5h10.8v8H2.6z"/><path d="M6 8h4"/></svg>
         </button>
         <div class="now-controls-mid">
-          <button class="now-speed" id="btnNowSpeed" title="播放速度">1.0×</button>
+          <button class="now-speed" id="btnNowSpeed" title="播放速度（点击展开倍速条）">1.0×</button>
           <button class="now-btn" id="btnNowBack" title="后退 15 秒" aria-label="后退15秒">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5.5A6 6 0 1 1 4.6 8.2"/><path d="M10 2.6v3.2H6.8"/></svg>
           </button>
@@ -1534,6 +1607,22 @@ ul{list-style:none;}
       </button>
     </div>
     <div class="queue-panel-body scroll" id="queuePanelList"></div>
+  </div>
+
+  <!-- 倍速条：点击倍速按钮弹出 -->
+  <div class="speed-panel" id="speedPanel">
+    <div class="speed-panel-head">
+      <span class="speed-panel-title">播放速度</span>
+      <span class="speed-panel-val" id="speedPanelVal">1.0×</span>
+    </div>
+    <div class="speed-track" id="speedTrack" role="slider" tabindex="0"
+         aria-label="播放速度" aria-valuemin="0.5" aria-valuemax="3" aria-valuenow="1">
+      <div class="speed-rail"></div>
+      <div class="speed-fill" id="speedFill"></div>
+      <div class="speed-thumb" id="speedThumb"></div>
+    </div>
+    <div class="speed-ticks" id="speedTicks"></div>
+    <div class="speed-presets" id="speedPresets"></div>
   </div>
 
   <!-- 底部播放条：通栏固定 -->
@@ -2970,14 +3059,12 @@ $('#btnQueue').addEventListener('click', () => {
   state.view = 'history'; state.podcast = null;
   renderSidebar(); renderContent();
 });
-$('#btnSpeed').addEventListener('click', cycleSpeed);
+$('#btnSpeed').addEventListener('click', cycleSpeed);   // 侧栏面板保留循环切换
 function cycleSpeed() {
   const sp = [1, 1.25, 1.5, 1.75, 2, 0.75];
-  state.speed = sp[(sp.indexOf(state.speed)+1) % sp.length];
-  audio.playbackRate = state.speed;      // 真实倍速
-  $('#btnSpeed').innerHTML = '<span style="font-size:11px;font-weight:700">' + state.speed.toFixed(2).replace(/0$/,'') + '×</span>';
+  const next = sp[(sp.indexOf(state.speed) + 1) % sp.length];
+  speedBar.set(next);          // 统一走倍速条逻辑，两处显示同步
   renderPanel();
-  toast('播放速度 ' + state.speed + '×');
 }
 
 /* 搜索 */
@@ -3172,7 +3259,9 @@ const nowSheet = {
     const icon = $('#nowPlayIcon');
     if (!state.cur) {
       icon.innerHTML = '<path d="M6 4.2 16 10 6 15.8z"/>';
-      $('#btnNowSpeed').textContent = state.speed.toFixed(2).replace(/0$/,'') + '×';
+      const spLabel = speedBar.fmt(state.speed);
+    $('#btnNowSpeed').textContent = spLabel;
+    if (speedBar.open) speedBar.sync();
       $('#btnNowFav').classList.remove('on');
       return;
     }
@@ -3210,7 +3299,12 @@ $('#btnNowTheme').addEventListener('click', () => {
 $('#btnNowPlay').addEventListener('click', () => togglePlay());
 $('#btnNowBack').addEventListener('click', () => seek(-15));
 $('#btnNowFwd').addEventListener('click', () => seek(30));
-$('#btnNowSpeed').addEventListener('click', () => cycleSpeed());
+/* 点击倍速按钮 -> 弹出倍速条（拖拽选择） */
+$('#btnNowSpeed').addEventListener('click', e => {
+  e.stopPropagation();
+  speedBar.toggle();
+});
+/* speedBar.bind() 延后到启动流程（DOM 就绪后）*/
 /* 右上角：播放列表面板开合（不关闭播放页） */
 function toggleQueuePanel() {
   const sheet = $('#nowSheet');
@@ -3561,6 +3655,181 @@ function fitNowArt() {
   art.style.height = size + 'px';
 }
 
+
+/* ============================================================
+   倍速条 —— 点击倍速按钮弹出，拖拽圆钮选择倍速
+   ------------------------------------------------------------
+   · 连续倍速 0.5× – 3.0×（0.05 步进）
+   · 圆钮可拖拽，拖拽时实时生效
+   · 点击刻度直接跳到该档
+   · 下方快捷档位按钮（0.75 / 1 / 1.25 / 1.5 / 2）
+   · Esc 或点击外部关闭
+   ============================================================ */
+const speedBar = {
+  MIN: 0.5, MAX: 3, STEP: 0.05,
+  TICKS: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3],
+  PRESETS: [0.75, 1, 1.25, 1.5, 2],
+  dragging: false,
+
+  ratio(v) { return (v - this.MIN) / (this.MAX - this.MIN); },
+
+  fmt(v) {
+    const s = v.toFixed(2);
+    return (parseFloat(s)).toFixed(1).replace(/\.0$/, '') + '×';
+  },
+
+  /* 渲染刻度与快捷档位 */
+  buildTicks() {
+    const ticks = $('#speedTicks');
+    if (!ticks) return;
+    ticks.innerHTML = this.TICKS.map(t =>
+      '<span class="speed-tick" data-speed="' + t + '" style="left:' +
+      (this.ratio(t) * 100) + '%">' + this.fmt(t).replace('×', '') + '</span>').join('');
+    const pre = $('#speedPresets');
+    if (pre) {
+      pre.innerHTML = this.PRESETS.map(v =>
+        '<button class="speed-preset" data-speed="' + v + '">' + this.fmt(v) + '</button>').join('');
+    }
+  },
+
+  /* 根据当前倍速刷新滑块位置与高亮 */
+  sync() {
+    const v = state.speed;
+    const r = this.ratio(v);
+    const fill = $('#speedFill'), thumb = $('#speedThumb');
+    if (fill) fill.style.width = (r * 100) + '%';
+    if (thumb) thumb.style.left = (r * 100) + '%';
+    const val = $('#speedPanelVal');
+    if (val) val.textContent = this.fmt(v);
+    const track = $('#speedTrack');
+    if (track) track.setAttribute('aria-valuenow', v.toFixed(2));
+    $$('#speedTicks .speed-tick').forEach(t => {
+      t.classList.toggle('on', Math.abs(+t.dataset.speed - v) < 0.001);
+    });
+    $$('#speedPresets .speed-preset').forEach(b => {
+      b.classList.toggle('on', Math.abs(+b.dataset.speed - v) < 0.001);
+    });
+  },
+
+  /* 设定倍速并应用到真实音频 */
+  set(v, silent) {
+    const nv = Math.max(this.MIN, Math.min(this.MAX, v));
+    state.speed = Math.round(nv / this.STEP) * this.STEP;
+    audio.playbackRate = state.speed;          // 真实倍速
+    this.sync();
+    // 同步各处倍速显示
+    const label = this.fmt(state.speed);
+    const nb = $('#btnNowSpeed'); if (nb) nb.textContent = label;
+    const pb = $('#btnSpeed');
+    if (pb) pb.innerHTML = '<span style="font-size:11px;font-weight:700">' + label + '</span>';
+    if (!silent) toast('播放速度 ' + label);
+  },
+
+  /* 打开 / 关闭 */
+  toggle() { this.open ? this.close() : this.show(); },
+  show() {
+    this.buildTicks();
+    this.sync();
+    const panel = $('#speedPanel'), btn = $('#btnNowSpeed');
+    if (!panel || !btn) return;
+    panel.classList.add('open');
+    btn.classList.add('open');
+    this.open = true;
+    // 定位到按钮正上方居中
+    const br = btn.getBoundingClientRect();
+    const pr = panel.getBoundingClientRect();
+    const sr = $('#nowSheet').getBoundingClientRect();
+    let left = br.left - sr.left + br.width / 2 - pr.width / 2;
+    left = Math.max(8, Math.min(sr.width - pr.width - 8, left));
+    panel.style.left = left + 'px';
+    // 优先放在控件行下方的空白区（不遮挡波形与进度）；
+    // 空间不足时再退到控件行上方
+    const below = br.bottom - sr.top + 12;
+    const above = br.top - sr.top - pr.height - 12;
+    const footTop = $('#nowFoot') ? $('#nowFoot').getBoundingClientRect().top - sr.top : sr.height;
+    let top = (below + pr.height <= footTop) ? below : above;
+    if (top < 8) top = below;
+    panel.style.top = top + 'px';
+  },
+  close() {
+    const panel = $('#speedPanel'), btn = $('#btnNowSpeed');
+    if (panel) panel.classList.remove('open');
+    if (btn) btn.classList.remove('open');
+    this.open = false;
+  },
+
+  /* 绑定交互 */
+  bind() {
+    const track = $('#speedTrack');
+    if (!track) return;
+
+    const valueAt = clientX => {
+      const r = track.getBoundingClientRect();
+      const ratio = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
+      return this.MIN + ratio * (this.MAX - this.MIN);
+    };
+
+    const onDown = e => {
+      this.dragging = true;
+      track.classList.add('dragging');
+      const x = (e.touches && e.touches[0]) ? e.touches[0].clientX
+              : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+              : e.clientX;
+      this.set(valueAt(x));
+      e.preventDefault();
+    };
+    const onMove = e => {
+      if (!this.dragging) return;
+      const x = (e.touches && e.touches[0]) ? e.touches[0].clientX
+              : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX
+              : e.clientX;
+      this.set(valueAt(x), true);
+      e.preventDefault();
+    };
+    const onUp = () => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      track.classList.remove('dragging');
+      this.set(state.speed, true);   // 落位时给一次提示
+    };
+
+    track.addEventListener('pointerdown', onDown);
+    track.addEventListener('touchstart', onDown, { passive: false });
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('touchend', onUp);
+
+    /* 键盘微调 */
+    track.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { e.preventDefault(); this.set(state.speed + 0.05); }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { e.preventDefault(); this.set(state.speed - 0.05); }
+      if (e.key === 'Home') { e.preventDefault(); this.set(this.MIN); }
+      if (e.key === 'End') { e.preventDefault(); this.set(this.MAX); }
+    });
+
+    /* 点击刻度 / 快捷档位 */
+    document.addEventListener('click', e => {
+      const t = e.target.closest('[data-speed]');
+      if (!t) return;
+      e.stopPropagation();
+      this.set(+t.dataset.speed);
+    });
+
+    /* 点击外部关闭 */
+    document.addEventListener('click', e => {
+      if (!this.open) return;
+      if (e.target.closest('#speedPanel') || e.target.closest('#btnNowSpeed')) return;
+      this.close();
+    });
+
+    /* Esc 关闭 */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && this.open) { this.close(); e.stopPropagation(); }
+    });
+  }
+};
+
 /* ============================================================
    深浅外观切换
    ------------------------------------------------------------
@@ -3857,6 +4126,7 @@ document.addEventListener('click', e => {
 /* ---------- 启动 ---------- */
 theme.load();
 initVolumeThumb();
+speedBar.bind();          // 倍速条交互（DOM 就绪后绑定）
 loadAll();
 updateAccountUI();
 renderSidebar();
