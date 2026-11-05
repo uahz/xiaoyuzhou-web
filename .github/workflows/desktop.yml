@@ -1,0 +1,118 @@
+name: Build Desktop
+
+on:
+  push:
+    tags: ['v*']
+    paths: ['desktop/**']
+  workflow_dispatch:
+    branches: [main]
+
+jobs:
+  # ---------- Windows：产出 .exe 安装包 ----------
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 校验
+        run: python check.py
+
+      - name: 打包 Windows（安装包 + 免安装版）
+        run: npx electron-builder --win --x64 --publish never
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaoyuzhou-windows
+          path: |
+            desktop/dist-out/*.exe
+            desktop/dist-out/*.zip
+            desktop/dist-out/latest.yml
+          if-no-files-found: error
+
+  # ---------- macOS：产出 .dmg（Intel + Apple Silicon） ----------
+  macos:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 校验
+        run: python3 check.py
+
+      - name: 打包 macOS
+        run: npx electron-builder --mac --x64 --arm64 --publish never
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaoyuzhou-macos
+          path: |
+            desktop/dist-out/*.dmg
+            desktop/dist-out/*.zip
+            desktop/dist-out/latest-mac.yml
+          if-no-files-found: error
+
+  # ---------- Release：打 tag 时发布 ----------
+  release:
+    needs: [windows, macos]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: 生成校验和
+        run: |
+          cd artifacts
+          sha256sum * > checksums.txt 2>/dev/null || true
+          cat checksums.txt
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/*
+          generate_release_notes: true
+          body: |
+            ## 下载
+
+            | 平台 | 文件 |
+            |---|---|
+            | Windows (x64) | `小宇宙-*-x64.exe` |
+            | macOS Intel | `小宇宙-*-x64.dmg` |
+            | macOS Apple Silicon | `小宇宙-*-arm64.dmg` |
+
+            > macOS 首次打开可能提示「无法验证开发者」，在「系统设置 → 隐私与安全性」中点击「仍要打开」即可。
+
+            ## 登录说明
+
+            桌面版由主进程直连小宇宙官方接口，不受浏览器跨域限制，可使用手机号 + 短信验证码真实登录。
+            凭证经 AES-256-GCM 加密后保存在本机，不会上传。
