@@ -60,19 +60,25 @@ def main():
         if opens != closes:
             issues.append("script 标签不配对 %d/%d" % (opens, closes))
 
-        # JSON 块可解析
-        for sid in ["catalog", "covers", "coverColors", "seeds", "data"]:
-            m = re.search(r'<script id="%s" type="application/json">(.*?)</script>' % sid, h, re.S)
-            if not m:
-                issues.append("缺少 JSON 块 " + sid)
-                continue
-            body = m.group(1)
-            if "</script" in body:
-                issues.append(sid + " 块内含未转义的 </script")
-            try:
-                json.loads(body.replace("<\\/", "</"))
-            except Exception as e:
-                issues.append(sid + " 解析失败: " + str(e)[:80])
+        # JSON 块可解析（仅在已注入数据的成品里检查；模板阶段没有数据块）
+        # 模板阶段 data 块里是 __DATA__ 占位符，跳过数据校验
+        has_data_block = ('<script id="data" type="application/json">' in h
+                          and "__DATA__" not in h)
+        if has_data_block:
+            for sid in ["catalog", "covers", "coverColors", "seeds", "data"]:
+                m = re.search(r'<script id="%s" type="application/json">(.*?)</script>' % sid, h, re.S)
+                if not m:
+                    issues.append("缺少 JSON 块 " + sid)
+                    continue
+                body = m.group(1)
+                if "</script" in body:
+                    issues.append(sid + " 块内含未转义的 </script")
+                try:
+                    json.loads(body.replace("<\\/", "</"))
+                except Exception as e:
+                    issues.append(sid + " 解析失败: " + str(e)[:80])
+        elif "__DATA__" not in h:
+            issues.append("模板缺少 __DATA__ 占位符")
 
         # inline 主脚本语法
         m = re.search(r"<script>(.*?)</script>", h, re.S)

@@ -920,12 +920,13 @@ ul{list-style:none;}
   position:relative;z-index:1;
   flex:1;display:flex;flex-direction:column;
   max-width:1440px;width:100%;margin:0 auto;
-  padding:var(--s5) var(--s6) var(--s5);
+  padding:calc(var(--s5) + 52px) var(--s6) var(--s5);
   overflow-y:auto;
 }
 .now-main{display:flex;flex-direction:column;}
 @media (min-width:1000px){
   .now-sheet-inner{padding:var(--s5) var(--s7) var(--s5);}
+
   .now-main{
     flex-direction:row;align-items:stretch;gap:var(--s6);
     flex:1;min-height:0;
@@ -938,10 +939,11 @@ ul{list-style:none;}
     display:flex;align-items:center;justify-content:center;
     overflow:hidden;padding:var(--s2) 0;
   }
-  /* 封面尺寸由 JS 计算：左半屏宽 × 75%，且不超过可用高度 */
+  /* 封面尺寸由 JS 计算：左半屏宽 × 88%，且不超过可用高度 */
   .now-art-col .now-art{
     width:auto;height:auto;max-width:none;max-height:none;
     margin:0;align-self:center;
+    background:transparent;
   }
   /* 右：详情 —— 右半屏，垂直居中 */
   .now-sheet-inner .now-info{
@@ -978,14 +980,29 @@ ul{list-style:none;}
   .now-bottom{display:none;}
   .now-desc{
     flex:1;min-width:0;margin:0;padding:0;
-    border-top:none;max-height:64px;overflow-y:auto;
-    font-size:var(--t-cap);line-height:1.7;
-    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+    border-top:none;max-height:32vh;overflow-y:auto;
+    font-size:13.5px;line-height:1.8;
+    color:var(--label-2);
+    display:block;
   }
 }
+/* 顶栏 —— 挂在 .now-sheet 上，绝对定位贴住窗口左右两侧。
+   .now-sheet-inner 有 max-width:1440px，1920 宽时两侧各空 240px，
+   所以顶栏必须脱离它，用 left/right 相对窗口定位，才能随窗口自适应。 */
 .now-top{
+  position:absolute;top:0;left:0;right:0;z-index:6;
+  height:52px;
   display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:var(--s4);
+  padding:0 var(--s5);
+  pointer-events:none;
+}
+.now-top > *{pointer-events:auto;}
+/* 标题绝对居中，不受两侧按钮宽度影响 */
+.now-top-title{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+  white-space:nowrap;
 }
 .now-top-title{font-size:var(--t-cap);font-weight:700;color:var(--label-2);letter-spacing:.04em;}
 .now-top-right{display:flex;align-items:center;gap:var(--s1);}
@@ -994,8 +1011,9 @@ ul{list-style:none;}
 .now-art{
   width:min(340px,72vw);aspect-ratio:1;margin:0 auto var(--s5);
   border-radius:22px;overflow:hidden;
-  box-shadow:0 24px 60px rgba(0,0,0,.28);
-  background:var(--fill);
+  box-shadow:0 18px 44px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.10);
+  /* 去掉灰底：封面图填满容器，灰底 + 大圆角会在四周透出一圈"色块" */
+  background:transparent;
   display:grid;place-items:center;
   transform:translateY(18px) scale(.96);opacity:0;
   transition:transform var(--d-emph) var(--spring),opacity var(--d-emph) var(--ease);
@@ -1185,11 +1203,23 @@ ul{list-style:none;}
 }
 .now-bottom button:hover{background:var(--fill-3);color:var(--label);}
 .now-bottom button svg{width:19px;height:19px;}
+/* 底部单集简介 —— 字号放大到正文级，可读性优先 */
 .now-desc{
-  margin-top:var(--s4);padding-top:var(--s3);border-top:.5px solid var(--sep);
-  font-size:var(--t-cap);color:var(--label-2);line-height:1.7;
-  max-height:120px;overflow-y:auto;
+  margin-top:var(--s4);padding-top:var(--s4);border-top:.5px solid var(--sep);
+  font-size:14px;line-height:1.85;
+  color:var(--label-2);
+  max-height:34vh;overflow-y:auto;
+  -webkit-line-clamp:6;-webkit-box-orient:vertical;
+  text-align:left;
 }
+/* 简介滚动到底时给个渐隐提示 */
+.now-desc-wrap{position:relative;}
+.now-desc-wrap::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:28px;
+  background:linear-gradient(to bottom,transparent,var(--bg-1));
+  pointer-events:none;opacity:0;transition:opacity var(--d-fast) var(--ease);
+}
+.now-desc-wrap.has-more::after{opacity:1;}
 
 /* ============================================================
    登录弹窗 —— modal sheet
@@ -1219,6 +1249,33 @@ ul{list-style:none;}
   transition:transform var(--d-emph) var(--spring);
 }
 .modal-backdrop.open .modal{transform:scale(1) translateY(0);}
+
+
+/* ---------- 登录：手机号验证码表单 ---------- */
+.phone-form{display:flex;flex-direction:column;gap:var(--s3);margin:var(--s4) 0 var(--s2);}
+.field{display:flex;flex-direction:column;gap:6px;text-align:left;}
+.field-label{font-size:var(--t-micro);font-weight:700;color:var(--label-2);letter-spacing:.03em;}
+.field-row{display:flex;gap:var(--s2);align-items:stretch;}
+.field-area{
+  height:38px;padding:0 8px;border-radius:var(--r-ctl);
+  background:var(--fill-3);color:var(--label);
+  border:.5px solid var(--sep-opaque);
+  font-size:var(--t-body);font-family:inherit;
+  cursor:pointer;flex:none;
+}
+.field-input{
+  flex:1;min-width:0;height:38px;padding:0 12px;border-radius:var(--r-ctl);
+  background:var(--fill-3);color:var(--label);
+  border:.5px solid var(--sep-opaque);
+  font-size:var(--t-body);font-family:inherit;
+  outline:none;transition:border-color var(--d-micro) var(--ease),background var(--d-micro) var(--ease);
+}
+.field-input::placeholder{color:var(--label-3);}
+.field-input:focus{border-color:var(--brand);background:var(--fill-2);}
+.field-send{height:38px;flex:none;white-space:nowrap;padding:0 12px;}
+.field-msg{min-height:18px;font-size:var(--t-micro);line-height:1.5;color:var(--label-2);}
+.field-msg.err{color:#ff6b5e;}
+.field-msg.ok{color:#34c759;}
 
 .modal-title{font-size:var(--t-title2);font-weight:700;margin-bottom:3px;}
 .modal-sub{font-size:var(--t-cap);color:var(--label-2);margin-bottom:var(--s4);}
@@ -1537,8 +1594,8 @@ ul{list-style:none;}
   <div class="now-sheet-blur" id="nowSheetBlur"></div>
   <div class="now-sheet-tint" id="nowSheetTint"></div>
   <div class="now-sheet-veil"></div>
-  <div class="now-sheet-inner scroll" id="nowSheetInner">
-    <div class="now-top">
+  <!-- 顶栏：直接挂在 now-sheet 上，用绝对定位贴住窗口左右两侧 -->
+  <div class="now-top">
       <button class="tbtn" id="btnNowClose" title="收起" aria-label="收起播放详情">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6.2 8 10.6l4.5-4.4"/></svg>
       </button>
@@ -1551,8 +1608,9 @@ ul{list-style:none;}
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M5.5 4h8M5.5 8h8M5.5 12h8"/><circle cx="2.6" cy="4" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="8" r=".9" fill="currentColor" stroke="none"/><circle cx="2.6" cy="12" r=".9" fill="currentColor" stroke="none"/></svg>
       </button>
       </div>
-    </div>
+  </div>
 
+  <div class="now-sheet-inner scroll" id="nowSheetInner">
     <div class="now-main">
       <div class="now-art-col">
         <div class="now-art" id="nowArt"></div>
@@ -1627,7 +1685,9 @@ ul{list-style:none;}
 
   <!-- 底部播放条：通栏固定 -->
   <div class="now-foot">
-    <div class="now-desc" id="nowDesc"></div>
+    <div class="now-desc-wrap" id="nowDescWrap">
+      <div class="now-desc" id="nowDesc"></div>
+    </div>
   </div>
 </div>
 
@@ -1636,40 +1696,63 @@ ul{list-style:none;}
 
 <div id="toast"></div>
 
-<!-- 登录弹窗 —— 扫码登录 -->
 <div class="modal-backdrop" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
   <div class="modal" id="loginModalBox">
-    <div class="modal-title" id="loginTitle">扫码登录小宇宙</div>
-    <div class="modal-sub" id="loginSub">用小宇宙 App 扫描下方二维码</div>
+    <div class="modal-title" id="loginTitle">登录小宇宙</div>
+    <div class="modal-sub" id="loginSub">使用小宇宙账号手机号登录</div>
 
-    <div class="qr-wrap" id="qrWrap">
-      <img id="qrImg" src="" alt="登录二维码">
-      <div class="qr-logo">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.4"/><path d="M3.2 8a4.8 4.8 0 0 1 4.8-4.8M12.8 8a4.8 4.8 0 0 1-4.8 4.8"/></svg>
-      </div>
+    <div class="phone-form" id="phoneForm">
+      <label class="field">
+        <span class="field-label">手机号</span>
+        <div class="field-row">
+          <select class="field-area" id="areaCode" aria-label="国家区号">
+            <option value="+86">+86</option>
+            <option value="+852">+852</option>
+            <option value="+853">+853</option>
+            <option value="+886">+886</option>
+            <option value="+1">+1</option>
+            <option value="+44">+44</option>
+            <option value="+81">+81</option>
+            <option value="+65">+65</option>
+          </select>
+          <input class="field-input" id="phoneInput" type="tel" inputmode="numeric"
+                 placeholder="请输入手机号" autocomplete="tel" maxlength="20">
+        </div>
+      </label>
+
+      <label class="field" id="codeField" hidden>
+        <span class="field-label">短信验证码</span>
+        <div class="field-row">
+          <input class="field-input" id="codeInput" type="text" inputmode="numeric"
+                 placeholder="6 位验证码" autocomplete="one-time-code" maxlength="8">
+          <button class="btn btn-outline field-send" id="btnSendCode">获取验证码</button>
+        </div>
+      </label>
+
+      <div class="field-msg" id="loginMsg" role="status"></div>
     </div>
 
-    <div class="scan-ok">
+    <div class="scan-ok" id="loginOk" hidden>
       <div class="ok-circle">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4 6.4 12 13 4.6"/></svg>
       </div>
-      <div class="ok-name" id="okName">已扫码</div>
-      <div class="ok-sub" id="okSub">请在手机上确认登录</div>
+      <div class="ok-name" id="okName">登录成功</div>
+      <div class="ok-sub" id="okSub"></div>
     </div>
 
-    <div class="qr-status" id="qrStatus">
+    <div class="qr-status" id="qrStatus" hidden>
       <span class="spinner"></span>
-      <span id="qrStatusText">等待扫码…</span>
+      <span id="qrStatusText">处理中…</span>
     </div>
 
     <div class="modal-actions" id="loginActions">
-      <button class="btn btn-outline" id="btnQrRefresh">刷新二维码</button>
-      <button class="btn btn-primary" id="btnSimulateScan">模拟扫码</button>
+      <button class="btn btn-outline" id="btnCancelLogin">取消</button>
+      <button class="btn btn-primary" id="btnDoLogin" disabled>登录</button>
     </div>
 
-    <div class="demo-note">
+    <div class="demo-note" id="loginNote">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.4v3.4M8 5.2v.1"/></svg>
-      <span>演示环境未接入小宇宙账号服务，点击「模拟扫码」可完整体验登录流程；接入真实服务后该按钮自动隐藏。</span>
+      <span>验证码由小宇宙官方服务下发，本机直接与官方接口通信，凭证加密保存在本机。</span>
     </div>
   </div>
 </div>
@@ -2097,145 +2180,19 @@ function loadAll() {
 /* ============================================================
    扫码登录
    ============================================================ */
-const QR_IMGS = [
-  'https://workbuddy-space-static.codebuddy.work/image/755zdgwID0cuk6kfG3EXMf.svg',
-  'https://workbuddy-space-static.codebuddy.work/image/62pMivEnWDpIrqrVP1TndE.svg',
-  'https://workbuddy-space-static.codebuddy.work/image/2xA6IqLfIUGQyS0fzeVul5.svg'
-];
-/* 演示用的候选身份 */
-const DEMO_USERS = [
-  { uid: 'u_8f3a2c91', name: '听友 2841', sub: '已登录 · 会员' },
-  { uid: 'u_2b6d07af', name: '拾光者',     sub: '已登录' },
-  { uid: 'u_c51e9d3a', name: '深夜电台',   sub: '已登录 · 会员' }
-];
 
-const login = {
-  qrIndex: 0,
-  status: 'waiting',      // waiting | scanned | confirmed | expired
-  countdown: 0,
-  timer: null,
-  scanTimer: null,
-  demoUserIdx: 0
-};
-
-function openLoginModal() {
-  login.status = 'waiting';
-  login.qrIndex = 0;
-  login.countdown = 120;
-  renderLoginModal();
-  $('#loginModal').classList.add('open');
-  $('#loginModal').setAttribute('aria-hidden', 'false');
-  document.addEventListener('keydown', escCloseLogin);
-  login.timer = setInterval(tickLogin, 1000);
-  setTimeout(() => { const b = $('#btnSimulateScan'); if (b) b.focus(); }, 300);
-}
-
-function closeLoginModal() {
-  $('#loginModal').classList.remove('open');
-  $('#loginModal').setAttribute('aria-hidden', 'true');
-  document.removeEventListener('keydown', escCloseLogin);
-  clearInterval(login.timer); login.timer = null;
-  clearTimeout(login.scanTimer); login.scanTimer = null;
-}
 
 function escCloseLogin(e) {
   if (e.key === 'Escape') closeLoginModal();
 }
 
 /* 二维码过期倒计时 —— 真实扫码服务下此处由服务端下发过期时间 */
-function tickLogin() {
-  if (login.status !== 'waiting') return;
-  login.countdown--;
-  if (login.countdown <= 0) {
-    login.status = 'expired';
-    renderLoginModal();
-    clearInterval(login.timer); login.timer = null;
-    return;
-  }
-  const st = $('#qrStatusText');
-  if (st) st.textContent = '等待扫码… ' + Math.floor(login.countdown / 60) + ':' + String(login.countdown % 60).padStart(2, '0');
-}
 
-function renderLoginModal() {
-  const box = $('#loginModalBox');
-  const wrap = $('#qrWrap');
-  const status = $('#qrStatus');
-  const txt = $('#qrStatusText');
-  const actions = $('#loginActions');
 
-  if (login.status === 'expired') {
-    box.classList.remove('scanned');
-    wrap.classList.add('expired');
-    status.classList.remove('scanned');
-    status.innerHTML = '<span id="qrStatusText">二维码已过期</span>';
-    actions.innerHTML = '<button class="btn btn-primary" id="btnQrRefresh">重新获取二维码</button>';
-    $('#btnQrRefresh').addEventListener('click', refreshQr);
-    return;
-  }
-  if (login.status === 'scanned') {
-    box.classList.add('scanned');
-    status.classList.add('scanned');
-    status.innerHTML = '<span id="qrStatusText">扫描成功，请在手机上确认登录</span>';
-    actions.innerHTML = '<button class="btn btn-outline" id="btnSimulateScan">模拟确认登录</button>';
-    $('#btnSimulateScan').addEventListener('click', completeLogin);
-    return;
-  }
-  // waiting
-  box.classList.remove('scanned');
-  wrap.classList.remove('expired');
-  $('#qrImg').src = QR_IMGS[login.qrIndex];
-  status.classList.remove('scanned');
-  status.innerHTML = '<span class="spinner"></span><span id="qrStatusText">等待扫码… ' +
-    Math.floor(login.countdown / 60) + ':' + String(login.countdown % 60).padStart(2, '0') + '</span>';
-  actions.innerHTML = '<button class="btn btn-outline" id="btnQrRefresh">刷新二维码</button>' +
-    '<button class="btn btn-primary" id="btnSimulateScan">模拟扫码</button>';
-  $('#btnQrRefresh').addEventListener('click', refreshQr);
-  $('#btnSimulateScan').addEventListener('click', simulateScan);
-}
-
-function refreshQr() {
-  login.qrIndex = (login.qrIndex + 1) % QR_IMGS.length;
-  login.status = 'waiting';
-  login.countdown = 120;
-  if (!login.timer) login.timer = setInterval(tickLogin, 1000);
-  renderLoginModal();
-  toast('二维码已刷新');
-}
 
 /* 模拟扫码：进入"已扫码待确认"态 */
-function simulateScan() {
-  login.status = 'scanned';
-  renderLoginModal();
-  const u = DEMO_USERS[login.demoUserIdx % DEMO_USERS.length];
-  $('#okName').textContent = u.name;
-  $('#okSub').textContent = '请在手机上确认登录';
-  clearInterval(login.timer); login.timer = null;
-}
 
 /* 确认登录 —— 落地账号，迁移/保留本地数据 */
-function completeLogin() {
-  const u = DEMO_USERS[login.demoUserIdx % DEMO_USERS.length];
-  login.demoUserIdx++;
-  const guestSubs = [...state.subs];
-  const guestFavs = [...state.favs];
-  const guestHist = state.history;
-
-  state.user = { uid: u.uid, name: u.name, sub: u.sub, avatar: null };
-  store.write('session', 'user', state.user);
-
-  // 首次登录时把游客数据并入账号（真实场景由服务端下发）
-  if (!store.read(scope(), 'subs', null)) {
-    store.write(scope(), 'subs', guestSubs);
-    store.write(scope(), 'favs', guestFavs);
-    store.write(scope(), 'history', guestHist);
-  }
-  loadAll();
-  updateAccountUI();
-  renderSidebar();
-  renderContent();
-  closeLoginModal();
-  toast('登录成功，欢迎回来');
-}
 
 function logout() {
   const sc = scope();
@@ -2250,6 +2207,14 @@ function logout() {
   renderSidebar();
   renderContent();
   toast('已退出登录');
+}
+
+/* 简介过长时显示底部渐隐提示 */
+function updateDescFade() {
+  const d = $('#nowDesc'), w = $('#nowDescWrap');
+  if (!d || !w) return;
+  const more = d.scrollHeight > d.clientHeight + 4;
+  w.classList.toggle('has-more', more);
 }
 
 function updateAccountUI() {
@@ -3209,6 +3174,8 @@ const nowSheet = {
     }
 
     $('#nowDesc').textContent = e.desc || '';
+    updateDescFade();
+    updateDescFade();
     this.updateProgress();
     this.updateControls();
   },
