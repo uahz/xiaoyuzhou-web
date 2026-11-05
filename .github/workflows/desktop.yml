@@ -59,8 +59,24 @@ jobs:
       - name: 校验
         run: python3 check.py
 
-      - name: 打包 macOS
-        run: npx electron-builder --mac --x64 --arm64 --publish never
+      - name: 清理残留挂载卷
+        # GitHub macOS runner 上偶有残留的 /Volumes 挂载，会让 hdiutil detach 失败
+        run: |
+          for v in /Volumes/*; do
+            [ -d "$v" ] && hdiutil detach "$v" -quiet -force 2>/dev/null || true
+          done
+          ls /Volumes
+
+      - name: 打包 macOS（zip，稳妥产物）
+        # zip 只需 .app 打包，不依赖 hdiutil，在 CI 上最可靠
+        run: npx electron-builder --mac zip --x64 --arm64 --publish never
+
+      - name: 打包 macOS（dmg，失败不阻塞）
+        # dmg 需要 hdiutil 挂载/卸载，CI 上偶发失败；失败时仍有 zip 可用
+        continue-on-error: true
+        run: |
+          npx electron-builder --mac dmg --x64 --arm64 --publish never || true
+          ls -la dist-out/*.dmg 2>/dev/null || echo "dmg 未生成"
 
       - name: 上传产物
         uses: actions/upload-artifact@v4
