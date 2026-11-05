@@ -45,7 +45,7 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "xiaoyuzhou-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -75,10 +75,10 @@
       "icon": "build/icon.png",
       "category": "public.app-category.music",
       "darkModeSupport": true,
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "xiaoyuzhou-${version}-${arch}.${ext}"
     },
     "dmg": {
-      "title": "小宇宙 ${version}",
+      "title": "xiaoyuzhou-${version}",
       "icon": "build/icon.png",
       "contents": [
         {
