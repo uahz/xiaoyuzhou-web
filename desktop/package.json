@@ -45,7 +45,7 @@
         }
       ],
       "icon": "build/icon.png",
-      "artifactName": "xiaoyuzhou-${version}-${arch}.${ext}"
+      "artifactName": "xiaoyuzhou-win-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -75,7 +75,7 @@
       "icon": "build/icon.png",
       "category": "public.app-category.music",
       "darkModeSupport": true,
-      "artifactName": "xiaoyuzhou-${version}-${arch}.${ext}"
+      "artifactName": "xiaoyuzhou-mac-${version}-${arch}.${ext}"
     },
     "dmg": {
       "title": "xiaoyuzhou-${version}",
@@ -91,7 +91,8 @@
           "type": "link",
           "path": "/Applications"
         }
-      ]
+      ],
+      "artifactName": "xiaoyuzhou-${version}-${arch}.dmg"
     },
     "publish": null
   },
