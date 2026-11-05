@@ -926,7 +926,6 @@ ul{list-style:none;}
 .now-main{display:flex;flex-direction:column;}
 @media (min-width:1000px){
   .now-sheet-inner{padding:var(--s5) var(--s7) var(--s5);}
-
   .now-main{
     flex-direction:row;align-items:stretch;gap:var(--s6);
     flex:1;min-height:0;
@@ -939,7 +938,7 @@ ul{list-style:none;}
     display:flex;align-items:center;justify-content:center;
     overflow:hidden;padding:var(--s2) 0;
   }
-  /* 封面尺寸由 JS 计算：左半屏宽 × 88%，且不超过可用高度 */
+  /* 封面尺寸由 JS 计算：左半屏宽 × 75%，且不超过可用高度 */
   .now-art-col .now-art{
     width:auto;height:auto;max-width:none;max-height:none;
     margin:0;align-self:center;
@@ -1209,7 +1208,6 @@ ul{list-style:none;}
   font-size:14px;line-height:1.85;
   color:var(--label-2);
   max-height:34vh;overflow-y:auto;
-  -webkit-line-clamp:6;-webkit-box-orient:vertical;
   text-align:left;
 }
 /* 简介滚动到底时给个渐隐提示 */
@@ -1273,7 +1271,10 @@ ul{list-style:none;}
 .field-input::placeholder{color:var(--label-3);}
 .field-input:focus{border-color:var(--brand);background:var(--fill-2);}
 .field-send{height:38px;flex:none;white-space:nowrap;padding:0 12px;}
-.field-msg{min-height:18px;font-size:var(--t-micro);line-height:1.5;color:var(--label-2);}
+.field-msg{
+  min-height:18px;font-size:var(--t-micro);line-height:1.5;
+  color:var(--label-2);
+}
 .field-msg.err{color:#ff6b5e;}
 .field-msg.ok{color:#34c759;}
 
@@ -1789,6 +1790,262 @@ ul{list-style:none;}
 
 <script id="data" type="application/json">__DATA__</script>
 <script>
+const DESKTOP = typeof window !== 'undefined' && !!window.xyz && window.xyz.isDesktop;
+
+const login = {
+  status: 'idle',       // idle | phone | code | sending | done
+  countdown: 0,
+  timer: null,
+  sending: false
+};
+
+function openLoginModal() {
+  login.status = 'phone';
+  login.countdown = 0;
+  resetLoginForm();
+  renderLoginModal();
+  $('#loginModal').classList.add('open');
+  $('#loginModal').setAttribute('aria-hidden', 'false');
+  document.addEventListener('keydown', escCloseLogin);
+  setTimeout(() => { const i = $('#phoneInput'); if (i) i.focus(); }, 300);
+}
+
+function closeLoginModal() {
+  $('#loginModal').classList.remove('open');
+  $('#loginModal').setAttribute('aria-hidden', 'true');
+  document.removeEventListener('keydown', escCloseLogin);
+  clearInterval(login.timer); login.timer = null;
+}
+
+function escCloseLogin(e) {
+  if (e.key === 'Escape') closeLoginModal();
+}
+
+function resetLoginForm() {
+  const p = $('#phoneInput'), c = $('#codeInput');
+  if (p) p.value = '';
+  if (c) c.value = '';
+  setLoginMsg('', '');
+  $('#codeField').hidden = true;
+  $('#loginOk').hidden = true;
+  $('#loginForm') && ($('#loginForm').hidden = false);
+}
+
+function setLoginMsg(text, kind) {
+  const el = $('#loginMsg');
+  if (!el) return;
+  el.textContent = text || '';
+  el.className = 'field-msg' + (kind ? ' ' + kind : '');
+}
+
+/* ---------- 渲染 ---------- */
+function renderLoginModal() {
+  const box = $('#loginModalBox');
+  const actions = $('#loginActions');
+  const sendBtn = $('#btnSendCode');
+  const doBtn = $('#btnDoLogin');
+  const phone = $('#phoneInput');
+  const codeField = $('#codeField');
+
+  box.classList.remove('scanned');
+  $('#loginOk').hidden = true;
+
+  const hasPhone = !!(phone && phone.value.trim().length >= 6);
+  if (doBtn) doBtn.disabled = !hasPhone || !$('#codeInput')?.value.trim();
+
+  if (login.status === 'phone') {
+    codeField.hidden = true;
+    actions.innerHTML = '<button class="btn btn-outline" id="btnCancelLogin">取消</button>' +
+      '<button class="btn btn-primary" id="btnNextStep">下一步</button>';
+    $('#btnCancelLogin').addEventListener('click', closeLoginModal);
+    $('#btnNextStep').addEventListener('click', () => {
+      // 重新读取当前值：hasPhone 是渲染时刻的快照，输入后需重算
+      const cur = ($('#phoneInput') || {}).value?.trim() || '';
+      if (cur.length < 6) { setLoginMsg('请输入正确的手机号', 'err'); return; }
+      login.status = 'code';
+      renderLoginModal();
+      setTimeout(() => { const c = $('#codeInput'); if (c) c.focus(); }, 120);
+    });
+    return;
+  }
+
+  if (login.status === 'code') {
+    codeField.hidden = false;
+    if (login.countdown > 0) {
+      if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.textContent = login.countdown + ' 秒后重发';
+      }
+    } else {
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '获取验证码'; }
+    }
+    actions.innerHTML = '<button class="btn btn-outline" id="btnCancelLogin">取消</button>' +
+      '<button class="btn btn-primary" id="btnDoLogin"' + (doBtn && doBtn.disabled ? ' disabled' : '') + '>登录</button>';
+    $('#btnCancelLogin').addEventListener('click', closeLoginModal);
+    const doLoginBtn = $('#btnDoLogin');
+    if (doLoginBtn) doLoginBtn.addEventListener('click', submitLogin);
+    if (sendBtn && !sendBtn.dataset.bound) {
+      sendBtn.dataset.bound = '1';
+      sendBtn.addEventListener('click', sendCode);
+    }
+    return;
+  }
+
+  if (login.status === 'done') {
+    codeField.hidden = true;
+    $('#loginOk').hidden = false;
+    $('#okName').textContent = '登录成功';
+    $('#okSub').textContent = login.nickname ? ('欢迎，' + login.nickname) : '已绑定你的小宇宙账号';
+    actions.innerHTML = '<button class="btn btn-primary" id="btnCloseLoginOk">完成</button>';
+    $('#btnCloseLoginOk').addEventListener('click', () => { closeLoginModal(); updateAccountUI(); });
+  }
+}
+
+/* ---------- 发送验证码 ---------- */
+async function sendCode() {
+  if (login.sending) return;
+  const phone = ($('#phoneInput') || {}).value?.trim();
+  const areaCode = ($('#areaCode') || {}).value || '+86';
+  if (!phone || phone.length < 6) { setLoginMsg('请输入正确的手机号', 'err'); return; }
+
+  login.sending = true;
+  const sendBtn = $('#btnSendCode');
+  if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = '发送中…'; }
+  setLoginMsg('正在发送验证码…', '');
+
+  if (!DESKTOP) {
+    // 网页版无桥接 —— 明确告知而非假装成功
+    setLoginMsg('真实登录需要桌面版客户端（本页为网页版，跨域受限）', 'err');
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '获取验证码'; }
+    login.sending = false;
+    return;
+  }
+
+  try {
+    const r = await window.xyz.auth.sendCode(phone, areaCode);
+    if (r && r.ok) {
+      setLoginMsg('验证码已发送，请查收短信', 'ok');
+      login.status = 'code';
+      login.countdown = 60;
+      clearInterval(login.timer);
+      login.timer = setInterval(() => {
+        login.countdown--;
+        if (login.countdown <= 0) { clearInterval(login.timer); login.timer = null; login.countdown = 0; }
+        renderLoginModal();
+      }, 1000);
+      renderLoginModal();
+    } else {
+      let msg = (r && r.message) || '发送失败';
+      if (r && r.needCaptcha) msg = '该账号需要图形验证，请改用桌面版完整登录流程';
+      setLoginMsg(msg, 'err');
+      if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '获取验证码'; }
+    }
+  } catch (e) {
+    setLoginMsg('网络错误：' + String(e && e.message || e).slice(0, 60), 'err');
+    if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = '获取验证码'; }
+  }
+  login.sending = false;
+}
+
+/* ---------- 提交登录 ---------- */
+async function submitLogin() {
+  const phone = ($('#phoneInput') || {}).value?.trim();
+  const code = ($('#codeInput') || {}).value?.trim();
+  const areaCode = ($('#areaCode') || {}).value || '+86';
+  if (!phone || !code) { setLoginMsg('请填写手机号与验证码', 'err'); return; }
+  if (!DESKTOP) {
+    setLoginMsg('真实登录需要桌面版客户端', 'err');
+    return;
+  }
+
+  const doBtn = $('#btnDoLogin');
+  if (doBtn) { doBtn.disabled = true; doBtn.textContent = '登录中…'; }
+  setLoginMsg('正在验证…', '');
+
+  try {
+    const r = await window.xyz.auth.login(phone, code, areaCode);
+    if (r && r.ok) {
+      login.nickname = (r.user && r.user.nickname) || '';
+      login.status = 'done';
+      setLoginMsg('', '');
+      renderLoginModal();
+      updateAccountUI();
+      toast('登录成功');
+    } else {
+      setLoginMsg((r && r.message) || '登录失败', 'err');
+      if (doBtn) { doBtn.disabled = false; doBtn.textContent = '登录'; }
+    }
+  } catch (e) {
+    setLoginMsg('网络错误：' + String(e && e.message || e).slice(0, 60), 'err');
+    if (doBtn) { doBtn.disabled = false; doBtn.textContent = '登录'; }
+  }
+}
+
+/* ---------- 绑定输入事件 ---------- */
+document.addEventListener('input', e => {
+  if (e.target && (e.target.id === 'phoneInput' || e.target.id === 'codeInput')) {
+    const doBtn = $('#btnDoLogin');
+    if (doBtn) {
+      const phone = ($('#phoneInput') || {}).value?.trim() || '';
+      const code = ($('#codeInput') || {}).value?.trim() || '';
+      doBtn.disabled = !(phone.length >= 6 && code.length >= 4);
+    }
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (e.target && e.target.id === 'phoneInput' && login.status === 'phone') {
+    e.preventDefault();
+    const p = ($('#phoneInput') || {}).value?.trim();
+    if (p && p.length >= 6) { login.status = 'code'; renderLoginModal(); setTimeout(() => { const c = $('#codeInput'); if (c) c.focus(); }, 120); }
+  }
+  if (e.target && e.target.id === 'codeInput' && login.status === 'code') {
+    e.preventDefault();
+    submitLogin();
+  }
+});
+
+
+function logout() {
+  const sc = scope();
+  state.user = null;
+  store.remove('session', 'user');
+  // 账号数据保留在 localStorage，重新登录可恢复；切回游客作用域
+  store.write('guest', 'subs', [...state.subs]);
+  store.write('guest', 'favs', [...state.favs]);
+  store.write('guest', 'history', state.history);
+  loadAll();
+  updateAccountUI();
+  renderSidebar();
+  renderContent();
+  toast('已退出登录');
+}
+
+function updateAccountUI() {
+  const btn = $('#btnLogin'), av = $('#btnAccount');
+  if (state.user) {
+    const un = state.user.name || '用户';
+    btn.hidden = true;
+    av.hidden = false;
+    av.textContent = un.slice(0, 1);
+    av.title = un;
+  } else {
+    btn.hidden = false;
+    av.hidden = true;
+  }
+  const mn = $('#menuName'), ms = $('#menuSub'), ma = $('#menuAvatar');
+  if (state.user) {
+    const un = state.user.name || '用户';
+    mn.textContent = un;
+    ms.textContent = state.user.sub || '小宇宙账号';
+    ma.textContent = un.slice(0, 1);
+  } else {
+    mn.textContent = '未登录';
+    ms.textContent = '登录后同步订阅与收听记录';
+    ma.textContent = '?';
+  }
+}
+
 /* ============================================================
    小宇宙 Web 版 — 应用逻辑
    ============================================================ */
