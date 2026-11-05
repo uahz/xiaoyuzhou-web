@@ -14,6 +14,12 @@ import re
 import subprocess
 import sys
 
+# Windows CI 的 Python 默认编码是 cp1252，打印中文会 UnicodeEncodeError。
+# 强制 stdout/stderr 使用 UTF-8。
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 TMP = os.path.join(ROOT, ".check-tmp")
 issues = []
